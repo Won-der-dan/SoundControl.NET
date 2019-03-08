@@ -9,6 +9,8 @@ namespace Sound.Models
     {
         //path to Sound Files
         public string MediaPath { get; set; }
+        //path to devices.json
+        public string DeviceConfigPath { get; set; }
         //path to logs catalogue
         public string LogPath { get; set; }
         //path to Alert files

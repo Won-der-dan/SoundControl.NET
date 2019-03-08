@@ -30,7 +30,6 @@ namespace WebApplication.Controllers
         //Запускает поток для каждого WaveOutEvent
         //ID - номер устроиства в URL
         //trackid - что воспроизводить (необязательный)
-        //privet23
         [HttpGet]
         public void Play(string locationId, string trackId)
         {
@@ -78,7 +77,7 @@ namespace WebApplication.Controllers
                 }
 
                 List<Device> devices = new List<Device>();
-                using (FileStream fs = new FileStream("C://Media//devices.json", FileMode.Open))
+                using (FileStream fs = new FileStream(config.DeviceConfigPath, FileMode.Open))
                 {
                     DataContractJsonSerializer jsonFormatter = new DataContractJsonSerializer(typeof(List<Device>));
                     devices = (List<Device>)jsonFormatter.ReadObject(fs);
@@ -92,10 +91,11 @@ namespace WebApplication.Controllers
                         for (int i = 0; i < WaveOut.DeviceCount; i++)
                         {
                             WaveOutCapabilities cap = WaveOut.GetCapabilities(i);
-                            if (cap.ManufacturerGuid.ToString() == device.ManufacturerGuid &&
-                                cap.NameGuid.ToString() == device.NameGuid &&
-                                cap.ProductGuid.ToString() == device.ProductGuid &&
-                                cap.ProductName.ToString() == device.ProductName)
+                            if (cap.ProductName.Length - cap.ProductName.IndexOf('(') > 3
+                             && cap.ProductName.IndexOf('(') != -1
+                             && cap.ProductName.ToString()
+                                               .Substring(cap.ProductName.ToString().IndexOf('(') + 1, 3)
+                                               .TrimEnd('-', ' ') == device.ProductName.ToString())
                             {
                                 selectedDevice = i;
                                 break;
@@ -110,7 +110,7 @@ namespace WebApplication.Controllers
                 if (locationId == "all")
                     for (int i = 0; i < numberOfDevices; i++)
                     {
-                        Play(i.ToString(), trackId);
+                        Play(deviceNames[i], trackId);
                     }
                 else
                     //Запускаем поток
@@ -144,23 +144,53 @@ namespace WebApplication.Controllers
 
 
         [HttpGet]
-        public void Stop(int locationId)
+        public void Stop(string locationId)
         {
-            if (waveOuts[locationId] != null && waveOuts[locationId].PlaybackState == PlaybackState.Playing)
+            config = GetConfig();
+            List<Device> devices = new List<Device>();
+            using (FileStream fs = new FileStream(config.DeviceConfigPath, FileMode.Open))
             {
-                waveOuts[locationId].Stop();
+                DataContractJsonSerializer jsonFormatter = new DataContractJsonSerializer(typeof(List<Device>));
+                devices = (List<Device>)jsonFormatter.ReadObject(fs);
+            }
+
+            int selectedDevice = -1;
+            foreach (Device device in devices)
+            {
+                if (device.Location == locationId)
+                {
+                    for (int i = 0; i < WaveOut.DeviceCount; i++)
+                    {
+                        WaveOutCapabilities cap = WaveOut.GetCapabilities(i);
+                        if (cap.ProductName.Length - cap.ProductName.IndexOf('(') > 3
+                         && cap.ProductName.IndexOf('(') != -1
+                         && cap.ProductName.ToString()
+                                           .Substring(cap.ProductName.ToString().IndexOf('(') + 1, 3)
+                                           .TrimEnd('-', ' ') == device.ProductName.ToString())
+                        {
+                            selectedDevice = i;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (waveOuts[selectedDevice] != null && waveOuts[selectedDevice].PlaybackState == PlaybackState.Playing)
+            {
+                waveOuts[selectedDevice].Stop();
             }
         }
 
         public void Catalog()
         {
+            config = GetConfig();
             String[] arr;
             list = new List<String>();
-            string pathToFiles = File.ReadLines(AppDomain.CurrentDomain.BaseDirectory + "conf.txt").ElementAtOrDefault(0);
+
             //считываем строку с директорией треков из конфига
             try
             {
-                arr = Directory.GetFiles(pathToFiles, "*.mp3");
+                arr = Directory.GetFiles(config.MediaPath, "*.mp3");
                 for (int i = 0; i < arr.Length; i++)
                 {
                     list.Add(arr[i]);
@@ -171,7 +201,7 @@ namespace WebApplication.Controllers
             #region exceptions
             catch
             {
-                string message = "Directory " + pathToFiles + " not found";
+                string message = "Directory " + config.MediaPath + " not found";
                 int code = 700;
                 string type = "exсeption";
                 Log(message, code, type);
@@ -188,21 +218,21 @@ namespace WebApplication.Controllers
             return tracks;
         }
 
-        public IHttpActionResult GetTrack(int id)
-        {
-            Catalog();
-            var track = tracks.FirstOrDefault((p) => p.Id == id);
-            if (track == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                return Ok(track);
-            }
+        //public IHttpActionResult GetTrack(int id)
+        //{
+        //    Catalog();
+        //    var track = tracks.FirstOrDefault((p) => p.Id == id);
+        //    if (track == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    else
+        //    {
+        //        return Ok(track);
+        //    }
 
 
-        }
+        //}
 
 
         public void StartPlay(int location, string track)
@@ -289,9 +319,9 @@ namespace WebApplication.Controllers
 
         public void Log(string message, int code, string type)
         {
-            string logpath = File.ReadLines(AppDomain.CurrentDomain.BaseDirectory + "conf.txt").ElementAtOrDefault(1);
+            config = GetConfig();
             //считываем директорию для лога из конфига
-            System.IO.File.AppendAllText(logpath +
+            System.IO.File.AppendAllText(config.LogPath +
             DateTime.Now.ToString("yyyyMMdd") + ".log",
             "{" + "  " + "\"date\": \"" + DateTime.Now.ToString("dd.MM.yyyy") + "\", "
             + "  " + "\"time\": \"" + DateTime.Now.ToString("HH:mm:ss") + "\", " +
