@@ -9,44 +9,41 @@ using System.Web.Http;
 using System.IO;
 using System.Configuration;
 using System.Collections.Specialized;
-using SoundControl.Models;
+using Sound.Models;
 using System.Threading.Tasks;
 using System.Runtime.Serialization.Json;
-using System.Web.Mvc;
-    // ReSharper disable StringLiteralTypo
 
-namespace SoundControl.Controllers
+namespace WebApplication.Controllers
 {
-    [System.Web.Http.Route("[controller]/[action]/{locationId?}/{trackId?}")]
-    [ApiController]
+
     public class SoundController : ApiController
     {
-        private int _numberOfDevices;
-        private static WaveOutEvent[] _waveOuts;
-        private List<string> _list;
-        private List<Track> tracks = new List<Track>();
-        private static Random _rnd = new Random();
-        private AppConfiguration _config;
-        private const string ConfigPath = "C://Media//AppConfiguration.json";
+        public int numberOfDevices;
+        public static WaveOutEvent[] waveOuts;
+        public List<string> list;
+        public List<Track> tracks = new List<Track>();
+        private static Random rnd = new Random();
+        private AppConfiguration config;
+        private const string CONFIG_PATH = "C://Media//AppConfiguration.json";
 
 
         //Запускает поток для каждого WaveOutEvent
         //ID - номер устроиства в URL
         //trackid - что воспроизводить (необязательный)
-        [System.Web.Http.HttpGet]
+        [HttpGet]
         public void Play(string locationId, string trackId)
         {
             try
             {
                 AppConfiguration config = GetConfig();
-                //Cписок имен звуковых выходов (кухня, спальня и т.д.)
+                //список имен звуковых выходов (кухня, спальня и т.д.)
                 List<string> deviceNames = config.RoomNames;
 
 
                 //Считаем количество именованных устроиств вывода в файле конфигурации
                 try
                 {
-                    _numberOfDevices = config.RoomNames.Count();
+                    numberOfDevices = config.RoomNames.Count();
                 }
                 #region exceptions
                 //Exception появляется, если в файле конфигурации вместо ожидаемого числа устроиств считывается строка
@@ -74,9 +71,9 @@ namespace SoundControl.Controllers
                     if (deviceNames.Contains(locationId.ToLower())) { deviceNumber = deviceNames.IndexOf(locationId.ToLower()); }
                 }
                 //Если массива, хранящего WaveoutEvent-ы еще не существует (первый запуск), создаем его
-                if (_waveOuts == null)
+                if (waveOuts == null)
                 {
-                    _waveOuts = new WaveOutEvent[_numberOfDevices];
+                    waveOuts = new WaveOutEvent[numberOfDevices];
                 }
 
                 List<Device> devices = new List<Device>();
@@ -110,7 +107,7 @@ namespace SoundControl.Controllers
 
                 //Если location=all, рекурсивно запускаем функцию для всех устройств
                 if (locationId == "all")
-                    for (int i = 0; i < _numberOfDevices; i++)
+                    for (int i = 0; i < numberOfDevices; i++)
                     {
                         Play(i.ToString(), trackId);
                     }
@@ -123,7 +120,7 @@ namespace SoundControl.Controllers
             catch (IndexOutOfRangeException)
             {
                 //Если numberOfDevices равен нулю, то не удалось считать количество выходов из конфига, иначе неверный ввод
-                if (_numberOfDevices == 0)
+                if (numberOfDevices == 0)
                 {
                     string wmessage = "Неверно сконфигурировано количество выходов в файле конфигурации.";
                     int wcode = 400;
@@ -145,19 +142,19 @@ namespace SoundControl.Controllers
         }
 
 
-        [System.Web.Http.HttpGet]
+        [HttpGet]
         public void Stop(int locationId)
         {
-            if (_waveOuts[locationId] != null && _waveOuts[locationId].PlaybackState == PlaybackState.Playing)
+            if (waveOuts[locationId] != null && waveOuts[locationId].PlaybackState == PlaybackState.Playing)
             {
-                _waveOuts[locationId].Stop();
+                waveOuts[locationId].Stop();
             }
         }
 
         public void Catalog()
         {
             String[] arr;
-            _list = new List<String>();
+            list = new List<String>();
             string pathToFiles = File.ReadLines(AppDomain.CurrentDomain.BaseDirectory + "conf.txt").ElementAtOrDefault(0);
             //считываем строку с директорией треков из конфига
             try
@@ -165,7 +162,7 @@ namespace SoundControl.Controllers
                 arr = Directory.GetFiles(pathToFiles, "*.mp3");
                 for (int i = 0; i < arr.Length; i++)
                 {
-                    _list.Add(arr[i]);
+                    list.Add(arr[i]);
                     tracks.Add(new Track() { Id = i + 1, Name = arr[i] });
                 }
                 //формируем каталог треков
@@ -183,62 +180,62 @@ namespace SoundControl.Controllers
 
         }
 
-        [System.Web.Http.HttpGet]
+        [HttpGet]
         public IEnumerable<Track> GetAllTracks()
         {
             Catalog();
             return tracks;
         }
 
-        //public IHttpActionResult GetTrack(int id)
-        //{
-        //    Catalog();
-        //    var track = tracks.FirstOrDefault((p) => p.Id == id);
-        //    if (track == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    else
-        //    {
-        //        return Ok(track);
-        //    }
+        public IHttpActionResult GetTrack(int id)
+        {
+            Catalog();
+            var track = tracks.FirstOrDefault((p) => p.Id == id);
+            if (track == null)
+            {
+                return NotFound();
+            }
+            else
+            {
+                return Ok(track);
+            }
 
 
-        //}
+        }
 
 
         public void StartPlay(int location, string track)
         {
-            _config = GetConfig();
+            config = GetConfig();
 
             //Если на данном устройстве что-то воспроизводится, останавливаем воспроизведение
-            if (_waveOuts[location] != null)
+            if (waveOuts[location] != null)
             {
-                _waveOuts[location].Stop();
+                waveOuts[location].Stop();
             }
             //Получаем список треков
             Catalog();
             //Считываем путь к каталогу с звуками-событиями из файла конфигурации
-            string eventCatalogue = _config.AlertPath;
-            _waveOuts[location] = new WaveOutEvent
+            string eventCatalogue = config.AlertPath;
+            waveOuts[location] = new WaveOutEvent
             {
                 DeviceNumber = location
             };
             Mp3FileReader mp3Reader = null;
             //Если trackid не был указан в URL => выбираем случайно
             //Иначе музыкальный файл по номеру или алерт
-            List<Alert> events = _config.Alerts;
+            List<Alert> events = config.Alerts;
 
             switch (track)
             {
                 case null:
-                    int trackid = _rnd.Next(_list.Count);
-                    mp3Reader = new Mp3FileReader(_list[trackid]);
+                    int trackid = rnd.Next(list.Count);
+                    mp3Reader = new Mp3FileReader(list[trackid]);
                     break;
                 default:
                     try
                     {
-                        foreach (Alert entry in _config.Alerts)
+                        foreach (Alert entry in config.Alerts)
                         {
                             if (entry.Name == track)
                             {
@@ -249,7 +246,7 @@ namespace SoundControl.Controllers
                         if (mp3Reader == null)
                         {
                             trackid = Convert.ToInt32(track);
-                            mp3Reader = new Mp3FileReader(_list[trackid - 1]);
+                            mp3Reader = new Mp3FileReader(list[trackid - 1]);
                         }
                     }
                     #region exceptions
@@ -266,9 +263,9 @@ namespace SoundControl.Controllers
             }
             if (mp3Reader != null)
             {
-                _waveOuts[location].Init(mp3Reader);
-                _waveOuts[location].Play();
-                _waveOuts[location].PlaybackStopped += new Disposer(mp3Reader).OnPlaybackStopped;
+                waveOuts[location].Init(mp3Reader);
+                waveOuts[location].Play();
+                waveOuts[location].PlaybackStopped += new Disposer(mp3Reader).OnPlaybackStopped;
 
             }
         }
@@ -305,7 +302,7 @@ namespace SoundControl.Controllers
 
         public AppConfiguration GetConfig()
         {
-            using (FileStream fs = new FileStream(ConfigPath, FileMode.Open))
+            using (FileStream fs = new FileStream(CONFIG_PATH, FileMode.Open))
             {
                 DataContractJsonSerializer jsonFormatter = new DataContractJsonSerializer(typeof(AppConfiguration));
                 return (AppConfiguration)jsonFormatter.ReadObject(fs);
@@ -313,5 +310,3 @@ namespace SoundControl.Controllers
         }
     }
 }
-
-//http://localhost:55525/api/Sound/play

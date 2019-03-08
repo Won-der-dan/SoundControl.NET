@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Player</title>
+</head>
+
+<body>
+    <style type="text/css">
+        .my_content_container a {
+            border-bottom: 1px solid #777777;
+            border-left: 1px solid #000000;
+            border-right: 1px solid #333333;
+            border-top: 1px solid #000000;
+            color: #000000;
+            display: block;
+            height: 2.5em;
+            padding: 0 1em;
+            width: 5em;
+            text-decoration: none;
+        }
+
+        // :hover and :active styles left as an exercise for the reader.
+    </style>
+    type url:<br>
+    http://localhost/WebApplication/api/sound/play/0  - computer<br>
+    http://localhost/WebApplication/api/sound/play/1 - first usb<br>
+    http://localhost/WebApplication/api/sound/play/2 - second usb <br>
+    http://localhost/WebApplication/api/sound/stop
+    <div>
+        <h2>Choose output</h2>
+        <select id="SoundDevice">
+            <option value='0'>Output 0</option>
+            <option value='1'>Output 1</option>
+            <option value='2'>Output 2</option>
+        </select>
+    </div>
+    <div>
+        <h2>Choose track</h2>
+        <select id="Tracklist"></select>
+    </div>
+    <br>
+    <div>
+        <input type="button" value="Play" onclick="play();" />
+    </div>
+    <br>
+    <div>
+        <input type="button" value="Stop" onclick="stop();" />
+    </div>
+    <div>
+        <h2>Search by ID</h2>
+        <input type="text" id="prodId" size="5" />
+        <input type="button" value="Search" onclick="find();" />
+        <p id="product" />
+    </div>
+    <div>
+        <h2>All tracks</h2>
+        <ul id="tracks" />
+    </div>
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+    <script>
+        var trackid = '1';
+        var deviceid = '0';
+        var uri = 'api/sound/GetAllTracks';
+        var url = 'api/sound/GetTrack';
+        var urlStop = 'api/sound/stop/0';
+        //var urlStop = 'api/sound/stop';
+        var urlPlay = 'api/sound/play/0/1';
+        $(document).ready(function () {
+            $.getJSON(uri)
+                .done(function (data) {
+                    $("#SoundDevice").change(function () {
+                        urlPlay = 'api/sound/play/' + $(this).val() + '/' + trackid;
+                        urlStop = 'api/sound/stop/' + $(this).val();
+                        deviceid = $(this).val();
+                        console.dir("device " + deviceid);
+                    });
+                    $("#Tracklist").change(function () {
+                        urlPlay = 'api/sound/play/' + deviceid + '/' + $(this).val();
+                        trackid = $(this).val();
+                        console.dir("track " + trackid);
+                    });
+                    $.each(data, function (key, item) {
+                        $('<li>', { text: formatItem(item) }).appendTo($('#tracks'));
+                        $('<option value=' + (key+1) + '>' + formatItem(item) + '</option>').appendTo($('#Tracklist'));
+                        $('<div>', { class: 'my_content_container', track: key, id: 'track' }).appendTo($('#tracks'));
+                    });
+                    //         document.getElementById('track').appendChild(document.createElement("<a href=api/sound/play/0/" + formatItem(document.activeElement.getAttribute(track))))
+                    //                 $(".my_content_container").append('<a href="api/sound/play/0/' + document.activeElement.getAttribute("track") + '" > Play</a > ');
+                    //                  $('<div>', { class: 'but' }).appendTo($('.my_content_container'));
+                    //                   $(".but").append('<a href="api/sound/play/0/' + document.activeElement.parentElement.getAttribute("track") + '" > Play</a > ');
+                });
+        });
+        function formatItem(item) {
+            return item.Id + ': ' + item.Name;
+        }
+        function play() {
+            $.getJSON(urlPlay)
+        }
+        function stop() {
+            $.getJSON(urlStop)
+        }
+        function find() {
+            var id = $('#prodId').val();
+            $.getJSON(url + '/' + id)
+                .done(function (data) {
+                    $('#product').text(formatItem(data));
+                })
+                .fail(function (jqXHR, textStatus, err) {
+                    $('#product').text('Error: ' + err);
+                });
+        }
+    </script>
+</body>
+</html>

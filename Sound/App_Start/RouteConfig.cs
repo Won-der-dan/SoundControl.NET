@@ -5,7 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Routing;
 
-namespace SoundControl
+namespace Sound
 {
     public class RouteConfig
     {
@@ -16,14 +16,9 @@ namespace SoundControl
             routes.MapRoute(
                 name: "Default",
                 url: "{controller}/{action}/{id}",
-                defaults: new { controller = "Home", action = "Index", id = UrlParameter.Optional }
-            );
-
-            routes.MapRoute(
-                name: "Sound",
-                url: "{controller}/{action}/{locationId}/{trackId}",
-                defaults: new { controller = "Sound", action = "Catalog", locationId = UrlParameter.Optional, trackId = UrlParameter.Optional }
+                defaults: new { action = "Index", id = UrlParameter.Optional }
             );
         }
     }
 }
+
