@@ -30,6 +30,7 @@ namespace WebApplication.Controllers
         //Запускает поток для каждого WaveOutEvent
         //ID - номер устроиства в URL
         //trackid - что воспроизводить (необязательный)
+        //privet
         [HttpGet]
         public void Play(string locationId, string trackId)
         {
