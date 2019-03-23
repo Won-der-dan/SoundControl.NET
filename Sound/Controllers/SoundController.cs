@@ -167,16 +167,22 @@ namespace WebApplication.Controllers
                 {
                     for (int i = 0; i < WaveOut.DeviceCount; i++)
                     {
+                        bool validProductName = false;
                         WaveOutCapabilities cap = WaveOut.GetCapabilities(i);
                         if (cap.ProductName.Length - cap.ProductName.IndexOf('(') > 3
-                         && cap.ProductName.IndexOf('(') != -1
-                         && cap.ProductName.ToString()
-                                           .Substring(cap.ProductName.ToString().IndexOf('(') + 1, 3)
-                                           .TrimEnd('-', ' ') == device.ProductName.ToString())
+                            && cap.ProductName.IndexOf('(') != -1)
+                        {
+                            validProductName = true;
+                        }
+                        if ((validProductName ?
+                             cap.ProductName.ToString()
+                                            .Substring(cap.ProductName.ToString()
+                                            .IndexOf('(') + 1, 3).TrimEnd('-', ' ') : "0") == device.ProductName.ToString())
                         {
                             selectedDevice = i;
                             break;
                         }
+
                     }
                 }
             }
